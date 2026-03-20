@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #00E676; /* Vibrant Green */
+    --primary-foreground: #ffffff;
+    --bg-dark: #F8FAFC; 
+    --surface: #FFFFFF; 
+    --text-main: #0F172A; 
+    --text-muted: #64748B; 
+    --danger: #EF4444; 
+    --danger-foreground: #ffffff;
+    --success: #10B981; 
+    --success-foreground: #ffffff;
+    --border: #E2E8F0; 
+    --ring: #00E676;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
