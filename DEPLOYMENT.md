@@ -85,6 +85,7 @@ Render uses Docker to build your backend. The `Dockerfile` is already in `backen
 | `SMTP_USER` | *(your Gmail)* |
 | `SMTP_PASSWORD` | *(your Gmail App Password)* |
 | `ALLOWED_ORIGINS` | `https://your-app.vercel.app` *(update after Step 5)* |
+| `FRONTEND_URL` | `https://your-app.vercel.app` *(update after Step 5)* |
 | `GOOGLE_CLIENT_ID` | *(your OAuth client ID)* |
 | `GOOGLE_CLIENT_SECRET` | *(your OAuth secret)* |
 | `GOOGLE_REDIRECT_URI` | `https://smartspend-api.onrender.com/api/v1/auth/google/callback` |

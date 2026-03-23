@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     
     allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "")
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     model_config = SettingsConfigDict(
         env_file=("/etc/secrets/.env", ".env"),

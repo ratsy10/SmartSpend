@@ -40,7 +40,13 @@ async def register(user_data: UserCreate, response: Response, background_tasks: 
     user.otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
     
     await db.commit()
-    background_tasks.add_task(send_otp_email, user.email, otp)
+    
+    # Try sending OTP email; if SMTP fails (e.g., blocked on free cloud tiers), auto-verify
+    email_sent = send_otp_email(user.email, otp)
+    if not email_sent:
+        user.is_verified = True
+        await db.commit()
+        return {"message": "Account created successfully.", "require_verification": False}
     
     return {"message": "Account created. Please check your email for the verification code.", "require_verification": True}
 
@@ -184,7 +190,7 @@ async def google_callback(code: str, response: Response, db: AsyncSession = Depe
     access_token = auth_service.create_access_token({"sub": str(user.id)})
     refresh_token = auth_service.create_refresh_token({"sub": str(user.id)})
     
-    frontend_url = "http://localhost:5173/oauth-callback"
+    frontend_url = f"{settings.frontend_url}/oauth-callback"
     redirect_response = RedirectResponse(url=f"{frontend_url}?token={access_token}")
     set_refresh_cookie(redirect_response, refresh_token)
     return redirect_response
