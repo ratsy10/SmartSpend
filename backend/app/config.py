@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "")
 
     model_config = SettingsConfigDict(
-        env_file=".env", 
+        env_file=("/etc/secrets/.env", ".env"),
         env_file_encoding="utf-8", 
         extra="ignore"
     )

@@ -12,9 +12,16 @@ from collections import defaultdict
 from app.config import settings
 from app.routers import auth, categories, expenses, analytics, budgets, notifications, uploads, insights
 
-from app.database import async_session_maker
+from app.database import async_session_maker, engine, Base
 from app.services.category_service import seed_categories
 from app.scheduler import start_scheduler, stop_scheduler
+
+# Import all models so Base.metadata.create_all() picks them up
+import app.models.user       # noqa: F401
+import app.models.category   # noqa: F401
+import app.models.expense    # noqa: F401
+import app.models.budget     # noqa: F401
+import app.models.insight    # noqa: F401
 
 
 import redis.asyncio as aioredis
@@ -100,7 +107,9 @@ def get_csp_header():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # On startup
+    # On startup — create tables if they don't exist (safe for production first deploy)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     async with async_session_maker() as session:
         await seed_categories(session)
     start_scheduler()

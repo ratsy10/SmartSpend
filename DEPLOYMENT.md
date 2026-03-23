@@ -1,26 +1,10 @@
 # 🚀 SmartSpend Production Deployment Guide
 
-Deploy your app for **free** using **Vercel** (frontend) + **Render** (backend + database).
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────┐     HTTPS      ┌──────────────────┐     PostgreSQL    ┌─────────────────┐
-│   Vercel (Free)  │ ─────────────→ │  Render (Free)    │ ───────────────→ │  Render DB       │
-│   React Frontend │                │  FastAPI Backend   │                  │  PostgreSQL      │
-└─────────────────┘                └──────────────────┘     Redis         ┌─────────────────┐
-                                                          ───────────────→│  Upstash (Free)  │
-                                                                          │  Redis           │
-                                                                          └─────────────────┘
-```
+Deploy for **free** using **Vercel** (frontend) + **Render** (backend via Docker) + **Upstash** (Redis).
 
 ---
 
 ## Step 1: Push Code to GitHub
-
-If you haven't already, create a GitHub repo and push your code:
 
 ```bash
 cd C:\Storage\Projects\SmartSpend
@@ -32,137 +16,118 @@ git branch -M main
 git push -u origin main
 ```
 
-> ⚠️ **IMPORTANT:** Make sure `.env` is in `.gitignore`! Never push secrets to GitHub.
+> ⚠️ Make sure `.env` is in `.gitignore` — never push secrets.
 
 ---
 
 ## Step 2: Set Up PostgreSQL on Render
 
-1. Go to [render.com](https://render.com) → Sign up (free)
-2. Click **New → PostgreSQL**
-3. Configure:
-   - **Name:** `smartspend-db`
-   - **Region:** Pick closest to your users (e.g., Oregon or Singapore)
-   - **Plan:** Free
-4. Click **Create Database**
-5. Copy the **Internal Database URL** (looks like `postgresql://user:pass@host/dbname`)
-6. For the backend env var, **replace** `postgresql://` with `postgresql+asyncpg://`
+1. [render.com](https://render.com) → **New → PostgreSQL**
+2. Name: `smartspend-db`, Plan: **Free**, Create
+3. Copy the **Internal Database URL**
+4. **Prepend** `+asyncpg` to the scheme:
 
 ```
-# Example: What Render gives you
-postgresql://smartspend_user:abc123@dpg-xyz.oregon-postgres.render.com/smartspend_db
+# Render gives you:
+postgresql://user:pass@host/dbname
 
-# What you put in DATABASE_URL (add +asyncpg)
-postgresql+asyncpg://smartspend_user:abc123@dpg-xyz.oregon-postgres.render.com/smartspend_db
+# You need (add +asyncpg):
+postgresql+asyncpg://user:pass@host/dbname
 ```
 
 ---
 
 ## Step 3: Set Up Free Redis (Upstash)
 
-1. Go to [upstash.com](https://upstash.com) → Sign up (free)
-2. Click **Create Database** → Choose a region → Create
-3. Copy the **Redis URL** (starts with `rediss://...`)
+1. [upstash.com](https://upstash.com) → Create Database → Choose region
+2. Your Redis URL needs the `rediss://` scheme (double-s for TLS)
+
+Extract just the URL part (drop the `redis-cli --tls -u` prefix):
+```
+rediss://default:YOUR_PASSWORD@your-host.upstash.io:6379
+```
+> Note: Use `rediss://` (with double-s) for Upstash since it requires TLS.
 
 ---
 
-## Step 4: Deploy Backend on Render
+## Step 4: Deploy Backend on Render (Docker)
 
-### 4a. Create a `render.yaml` (Optional - for auto-deploy)
+Render uses Docker to build your backend. The `Dockerfile` is already in `backend/`.
 
-Or simply use the Render dashboard:
-
-### 4b. Dashboard Deploy
-
-1. Go to [render.com](https://render.com) → **New → Web Service**
+1. [render.com](https://render.com) → **New → Web Service**
 2. Connect your GitHub repo
-3. Configure:
-   - **Name:** `smartspend-api`
-   - **Root Directory:** `backend`
-   - **Runtime:** Python 3
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Plan:** Free
+3. Fill in the fields you see:
 
-4. **Add Environment Variables** (Settings → Environment):
+| Field | Value |
+|---|---|
+| **Name** | `smartspend-api` |
+| **Docker Build Context Directory** | `backend/` |
+| **Dockerfile Path** | `backend/Dockerfile` |
+| **Docker Command** | *(leave empty — Dockerfile CMD handles it)* |
+| **Pre-Deploy Command** | *(leave empty)* |
+| **Auto-Deploy** | `On Commit` |
+
+4. Scroll up to **Environment Variables** and add these:
 
 | Variable | Value |
 |---|---|
 | `APP_ENV` | `production` |
-| `SECRET_KEY` | *(generate a new one: `python -c "import secrets; print(secrets.token_hex(32))"`)* |
+| `SECRET_KEY` | *(generate: `python -c "import secrets; print(secrets.token_hex(32))"`)* |
 | `ALGORITHM` | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `30` |
-| `DATABASE_URL` | `postgresql+asyncpg://...` *(from Step 2)* |
-| `REDIS_URL` | `rediss://...` *(from Step 3)* |
-| `GEMINI_API_KEY` | *(your Google Gemini API key)* |
+| `DATABASE_URL` | `postgresql+asyncpg://smartspend_db_d0hd_user:u5LwEXsf6omm0fqUYTs9Ny2nz7yJ3aIr@dpg-d70nnqv5gffc7391u0p0-a/smartspend_db_d0hd` |
+| `REDIS_URL` | `rediss://default:gQAAAAAAAUGlAAIncDJjZmNkODE3Yzg2MmI0MTczYWRlZDIyNDQ5OTVlMWNjOHAyODIzNDE@advanced-dogfish-82341.upstash.io:6379` |
+| `GEMINI_API_KEY` | *(your Gemini key)* |
 | `GEMINI_MODEL` | `gemini-2.5-flash` |
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `465` |
-| `SMTP_USER` | *(your Gmail address)* |
+| `SMTP_USER` | *(your Gmail)* |
 | `SMTP_PASSWORD` | *(your Gmail App Password)* |
 | `ALLOWED_ORIGINS` | `https://your-app.vercel.app` *(update after Step 5)* |
-| `GOOGLE_CLIENT_ID` | *(your OAuth client ID if using Google login)* |
+| `GOOGLE_CLIENT_ID` | *(your OAuth client ID)* |
 | `GOOGLE_CLIENT_SECRET` | *(your OAuth secret)* |
 | `GOOGLE_REDIRECT_URI` | `https://smartspend-api.onrender.com/api/v1/auth/google/callback` |
 
-5. Click **Create Web Service**
-6. Wait for the build to complete (~3-5 minutes)
-7. Note your backend URL: `https://smartspend-api.onrender.com`
-
-> 💡 **Note:** Free Render instances spin down after 15 minutes of inactivity. The first request after sleep takes ~30s to wake up. This is normal for the free tier.
+5. Click **Deploy Web Service**
+6. Wait ~5 minutes for the Docker image to build
+7. Your backend URL: `https://smartspend-api.onrender.com`
 
 ---
 
 ## Step 5: Deploy Frontend on Vercel
 
-1. Go to [vercel.com](https://vercel.com) → Sign up with GitHub
-2. Click **Add New → Project** → Import your `SmartSpend` repo
+1. [vercel.com](https://vercel.com) → Sign up with GitHub
+2. **Add New → Project** → Import your `SmartSpend` repo
 3. Configure:
-   - **Framework Preset:** Vite
-   - **Root Directory:** `frontend`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
 
-4. **Add Environment Variable:**
+| Field | Value |
+|---|---|
+| **Framework Preset** | Vite |
+| **Root Directory** | `frontend` |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+
+4. **Environment Variable:**
 
 | Variable | Value |
 |---|---|
 | `VITE_API_URL` | `https://smartspend-api.onrender.com/api/v1` |
 
 5. Click **Deploy**
-6. Your app will be live at: `https://smartspend-xxx.vercel.app`
 
-### 5a. Update Backend CORS
+### After Deploy — Update Backend CORS
 
-After deployment, go back to Render and update:
+Go back to Render → your service → **Environment** → update:
 ```
-ALLOWED_ORIGINS=https://your-app.vercel.app,https://smartspend-xxx.vercel.app
-```
-
----
-
-## Step 6: Run Database Migrations
-
-After the backend is running, you need to initialize the database. SSH into Render or use the **Shell** tab:
-
-1. Go to your Render web service → **Shell** tab
-2. Run:
-```bash
-alembic upgrade head
-```
-
-If you don't have Alembic migrations set up, the app's startup event should auto-create tables. Verify by hitting:
-```
-https://smartspend-api.onrender.com/api/v1/categories
+ALLOWED_ORIGINS=https://your-app.vercel.app
 ```
 
 ---
 
-## Step 7: Seed Demo Data (Optional)
+## Step 6: Seed Demo Data (Optional)
 
-To seed the demo accounts on production, use Render's Shell:
-
+In Render → your service → **Shell** tab:
 ```bash
 python seed_mock_data.py
 python seed_insights_demo.py
@@ -170,70 +135,27 @@ python seed_insights_demo.py
 
 ---
 
-## 🔄 How to Deploy New Changes
+## 🔄 Deploying New Changes
 
-### Frontend (Vercel) — Automatic!
 ```bash
 git add .
 git commit -m "feat: your changes"
 git push origin main
 ```
-Vercel auto-detects the push and redeploys in ~30 seconds. ✅
 
-### Backend (Render) — Also Automatic!
-Same process — Render watches your `main` branch and auto-deploys on push.
+Both **Vercel** and **Render** auto-deploy on push. Zero manual steps.
 
-### Manual Redeploy
-If auto-deploy isn't working:
-- **Vercel:** Dashboard → Project → Deployments → **Redeploy**
-- **Render:** Dashboard → Service → **Manual Deploy → Deploy latest commit**
+**Manual redeploy:** Dashboard → Service → **Manual Deploy** / **Redeploy**
 
 ---
 
 ## 🛡️ Production Checklist
 
-Before going live, verify these:
-
-- [ ] **Generate a new `SECRET_KEY`** — don't use the dev one
-- [ ] **Remove dev credentials** from `.env` before pushing
-- [ ] **`.gitignore` includes:** `.env`, `venv/`, `__pycache__/`, `node_modules/`
-- [ ] **CORS is configured** with your Vercel domain
-- [ ] **Google OAuth redirect URI** updated to production URL
-- [ ] **SMTP credentials** are working
-- [ ] **Gemini API key** has production quota
-
----
-
-## 📁 Required .gitignore Files
-
-### `backend/.gitignore`
-```
-venv/
-__pycache__/
-*.pyc
-.env
-*.db
-.pytest_cache/
-```
-
-### `frontend/.gitignore`
-```
-node_modules/
-dist/
-.env
-.env.local
-```
-
-### Root `.gitignore`
-```
-.env
-*.pyc
-__pycache__/
-node_modules/
-dist/
-venv/
-.DS_Store
-```
+- [ ] Generate new `SECRET_KEY` for production
+- [ ] `.env` is in `.gitignore`
+- [ ] CORS configured with Vercel domain
+- [ ] Google OAuth redirect URI updated
+- [ ] Test login, voice input, and receipt upload
 
 ---
 
@@ -241,23 +163,21 @@ venv/
 
 | Issue | Fix |
 |---|---|
-| Backend takes 30s to respond | Free Render tier sleeps after 15min inactivity — first request wakes it |
-| CORS errors in browser | Add your Vercel URL to `ALLOWED_ORIGINS` in Render env vars |
-| Database connection fails | Ensure you used `postgresql+asyncpg://` (not plain `postgresql://`) |
-| Frontend shows "Network Error" | Check `VITE_API_URL` is set correctly in Vercel env vars |
-| OTP emails not sending | Verify SMTP credentials; Gmail needs App Passwords enabled |
-| Google Login redirect fails | Update `GOOGLE_REDIRECT_URI` to your Render URL |
+| Backend takes 30s | Free tier sleeps after 15min inactivity |
+| CORS errors | Add Vercel URL to `ALLOWED_ORIGINS` |
+| DB connection fails | Use `postgresql+asyncpg://` not `postgresql://` |
+| Redis connection fails | Use `rediss://` (double-s) for Upstash TLS |
+| Frontend "Network Error" | Check `VITE_API_URL` in Vercel env vars |
 
 ---
 
-## 💰 Cost Summary
+## 💰 Cost: $0/month
 
 | Service | Tier | Cost |
 |---|---|---|
-| Vercel (Frontend) | Hobby | **Free** |
-| Render (Backend) | Free | **Free** |
-| Render (PostgreSQL) | Free | **Free** (90 days, then $7/mo) |
-| Upstash (Redis) | Free | **Free** (10k commands/day) |
-| **Total** | | **$0/month** |
+| Vercel (Frontend) | Hobby | Free |
+| Render (Backend) | Free | Free |
+| Render (PostgreSQL) | Free | Free (90 days, then $7/mo) |
+| Upstash (Redis) | Free | Free (10k commands/day) |
 
-> After 90 days, Render's free PostgreSQL expires. You can migrate to [Supabase](https://supabase.com) (free forever, 500MB) or [Neon](https://neon.tech) (free forever, 512MB) as alternatives.
+> After 90 days, swap to [Neon](https://neon.tech) or [Supabase](https://supabase.com) for free-forever PostgreSQL.

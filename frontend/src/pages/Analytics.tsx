@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Bell, ArrowLeft, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { AreaChart, Area, XAxis, ResponsiveContainer } from 'recharts';
-import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { formatCurrency } from '../lib/utils';
 import AddBudgetModal from '../components/AddBudgetModal';
@@ -39,20 +38,14 @@ interface BudgetItem {
   percentage: number;
 }
 
-interface Suggestion {
-  id: string;
-  type: string;
-  content: string;
-  top_category?: string;
-  category?: { name: string, icon: string, color: string };
-}
+
 
 
 
 export default function Analytics() {
   const user = useAuthStore(state => state.user);
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [trendData, setTrendData] = useState<{name: string, value: number}[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,14 +65,12 @@ export default function Analytics() {
       const today = new Date();
       const year = today.getFullYear();
       const month = today.getMonth() + 1;
-      const [budgetsRes, suggestionsRes, sumRes, trendRes, catsRes] = await Promise.all([
+      const [budgetsRes, sumRes, trendRes, catsRes] = await Promise.all([
         api.get('/budgets/status'),
-        api.get('/insights/suggestions'),
         api.get(`/analytics/summary?year=${year}&month=${month}`),
         api.get('/analytics/trend?months=6'),
         api.get('/categories')
       ]);
-      setSuggestions(suggestionsRes.data);
       
       const activeBudgets = budgetsRes.data as BudgetStatus[];
       const cats = catsRes.data as any[];
@@ -181,14 +172,7 @@ export default function Analytics() {
     setIsAddBudgetOpen(true);
   };
 
-  const dismissSuggestion = async (id: string) => {
-    try {
-      await api.post(`/insights/suggestions/${id}/dismiss`);
-      setSuggestions(prev => prev.filter(s => s.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
 
   const generateAIInsights = async () => {
     setGeneratingInsights(true);
