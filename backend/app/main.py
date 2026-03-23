@@ -80,30 +80,6 @@ class RateLimiter(BaseHTTPMiddleware):
         return response
 
 
-def get_csp_header():
-    """Get Content-Security-Policy header. Production mode uses stricter policy."""
-    if settings.app_env == "production":
-        return (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "img-src 'self' https: data: blob:; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "frame-ancestors 'none'; "
-            "form-action 'self'; "
-            "upgrade-insecure-requests; "
-        )
-    else:
-        # Development mode: relaxed CSP for easier development
-        return (
-            "default-src 'self' 'unsafe-inline' data: blob:; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob: https://storage.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "connect-src 'self' http://localhost:8000 https://*.googleapis.com; "
-        )
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -122,13 +98,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CSP headers middleware
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    if settings.app_env == "production":
-        response.headers["Content-Security-Policy"] = get_csp_header()
-    return response
 
 # Add rate limiting in production only (must be at module level, not inside a dispatch function)
 if settings.app_env == "production":
