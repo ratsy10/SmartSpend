@@ -122,25 +122,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CSP headers middleware and rate limiting in production only
+# Add CSP headers middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Add Content-Security-Policy header only in production
     if settings.app_env == "production":
         response.headers["Content-Security-Policy"] = get_csp_header()
-    
-    # Apply rate limiting middleware in production only
-    if settings.app_env == "production":
-        app.add_middleware(RateLimiter, max_requests=10, window_seconds=300)
-    
     return response
+
+# Add rate limiting in production only (must be at module level, not inside a dispatch function)
+if settings.app_env == "production":
+    app.add_middleware(RateLimiter, max_requests=10, window_seconds=300)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    # Restrict methods and headers in production only
     allow_methods=["GET", "POST", "PUT", "DELETE"] if settings.app_env == "production" else ["*"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
         if settings.app_env == "production"
