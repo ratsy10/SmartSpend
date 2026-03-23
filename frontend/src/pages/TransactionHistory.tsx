@@ -19,23 +19,44 @@ export default function TransactionHistory() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const fetchExpenses = async (pageNum: number, isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const { data } = await api.get(`/expenses?limit=30&page=${pageNum}`);
+      const newExpenses = data.data || data.items || [];
+      
+      if (isInitial) {
+        setExpenses(newExpenses);
+      } else {
+        setExpenses(prev => [...prev, ...newExpenses]);
+      }
+      setHasMore(pageNum < data.pages);
+    } catch (err: any) {
+      if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+      console.error("Failed to fetch expenses", err);
+    } finally {
+      if (isInitial) setLoading(false);
+      else setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
-    const controller = new AbortController();
-    const fetchExpenses = async () => {
-      try {
-        const { data } = await api.get('/expenses?limit=50', { signal: controller.signal });
-        setExpenses(data.data || data.items || []);
-      } catch (err: any) {
-        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
-        console.error("Failed to fetch expenses", err);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-    fetchExpenses();
-    return () => controller.abort();
+    fetchExpenses(1, true);
   }, []);
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchExpenses(nextPage, false);
+    }
+  };
 
   const filteredExpenses = expenses.filter(exp => 
     exp.merchant?.toLowerCase().includes(search.toLowerCase()) || 
@@ -101,7 +122,7 @@ export default function TransactionHistory() {
                     <div className="flex items-center gap-4">
                       <div 
                         className="w-12 h-12 rounded-xl flex items-center justify-center text-xl"
-                        style={{ backgroundColor: `${exp.category.color}20`, color: exp.category.color }}
+                        style={{ backgroundColor: `${exp.category.color}1a`, color: exp.category.color }}
                       >
                         <CategoryIcon name={exp.category.icon} className="w-6 h-6" />
                       </div>
@@ -120,6 +141,18 @@ export default function TransactionHistory() {
               </div>
             </div>
           ))}
+          
+          {hasMore && (
+            <div className="pt-4 pb-8 flex justify-center">
+              <button 
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="bg-surface border border-border/50 text-textMain px-6 py-3 rounded-xl font-semibold shadow-sm hover:opacity-80 transition disabled:opacity-50"
+              >
+                {loadingMore ? 'Loading...' : 'Load More Transactions'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

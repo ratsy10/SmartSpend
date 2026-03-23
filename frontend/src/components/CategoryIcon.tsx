@@ -10,7 +10,8 @@ import {
   Lightbulb, 
   Zap, 
   Box, 
-  HelpCircle 
+  HelpCircle,
+  Repeat
 } from 'lucide-react';
 
 interface CategoryIconProps {
@@ -29,6 +30,7 @@ const iconMap: Record<string, React.ElementType> = {
   'lightbulb': Lightbulb,
   'zap': Zap,
   'box': Box,
+  'repeat': Repeat,
   // Add fallback or aliases if needed
 };
 

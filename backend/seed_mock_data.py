@@ -18,7 +18,7 @@ from app.models.insight import Insight
 async def seed_data():
     async with async_session_maker() as session:
         # Create a mock user
-        user_email = "mock@smartspend.ai"
+        user_email = "demo@example.com"
         user_stmt = select(User).where(User.email == user_email)
         user_result = await session.execute(user_stmt)
         user = user_result.scalar_one_or_none()
@@ -27,7 +27,7 @@ async def seed_data():
             print(f"Creating mock user {user_email}...")
             user = User(
                 email=user_email,
-                full_name="Alex Mock",
+                full_name="Demo User",
                 currency="INR",
                 onboarding_done=True
             )
@@ -56,7 +56,8 @@ async def seed_data():
             Budget(user_id=user.id, category_id=cat_map["food"].id, monthly_limit=Decimal("8000")),
             Budget(user_id=user.id, category_id=cat_map["transport"].id, monthly_limit=Decimal("3000")),
             Budget(user_id=user.id, category_id=cat_map["entertainment"].id, monthly_limit=Decimal("5000")),
-            Budget(user_id=user.id, category_id=cat_map["shopping"].id, monthly_limit=Decimal("6000"))
+            Budget(user_id=user.id, category_id=cat_map["shopping"].id, monthly_limit=Decimal("6000")),
+            Budget(user_id=user.id, category_id=cat_map["subscriptions"].id, monthly_limit=Decimal("1500"))
         ]
         session.add_all(budgets)
         
@@ -67,7 +68,8 @@ async def seed_data():
         merchants = {
             "food": ["Starbucks", "Subway", "Local Cafe", "Whole Foods", "Trader Joe's", "Dominos"],
             "transport": ["Uber", "Lyft", "Metro", "Gas Station"],
-            "entertainment": ["Netflix", "Spotify", "AMC Theaters", "Steam"],
+            "entertainment": ["AMC Theaters", "Steam"],
+            "subscriptions": ["Netflix", "Spotify", "Amazon Prime", "Gym Membership", "Patreon"],
             "shopping": ["Amazon", "Target", "H&M", "IKEA"]
         }
         

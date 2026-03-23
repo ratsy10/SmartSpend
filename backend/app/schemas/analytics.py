@@ -15,6 +15,7 @@ class MonthlySummary(BaseModel):
     total_budget: Decimal
     budget_used_pct: Decimal
     vs_last_month: Decimal
+    transaction_count: int = 0
     by_category: List[CategoryBreakdown]
 
 class MonthlyTotal(BaseModel):

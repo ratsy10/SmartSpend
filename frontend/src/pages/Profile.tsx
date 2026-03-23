@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
-import { LogOut, Bell, DollarSign, Save } from 'lucide-react';
+import { LogOut, Bell, DollarSign, Save, Moon, Sun } from 'lucide-react';
 import { api } from '../lib/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useTheme } from '../components/ThemeProvider';
 
 export default function Profile() {
   const { user, updateUser, logout } = useAuthStore();
   const { subscribeToPush, isSubscribed } = usePushNotifications();
+  const { theme, toggleTheme } = useTheme();
   
   const [currency, setCurrency] = useState(user?.currency || 'USD');
   const [reminder, setReminder] = useState(true);
@@ -62,6 +64,21 @@ export default function Profile() {
       </div>
 
       <div className="space-y-6">
+        <div className="bg-surface border border-border rounded-3xl overflow-hidden shadow-lg">
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? <Moon className="w-5 h-5 text-primary" /> : <Sun className="w-5 h-5 text-primary" />}
+              <h3 className="font-semibold">Dark Mode</h3>
+            </div>
+            <button 
+              onClick={toggleTheme}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-slate-300'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+        </div>
+
         <div className="bg-surface border border-border rounded-3xl overflow-hidden shadow-lg">
           <div className="p-4 border-b border-border/50 flex items-center gap-3">
             <DollarSign className="w-5 h-5 text-primary" />

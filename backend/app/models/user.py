@@ -22,6 +22,9 @@ class User(Base):
     reminder_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     reminder_time: Mapped[Optional[datetime]] = mapped_column(Time, nullable=True) # e.g. 21:00 daily reminder
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    otp_code: Mapped[Optional[str]] = mapped_column(String(6), nullable=True)
+    otp_expiry: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     push_subscription: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # JSON web push subscription
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

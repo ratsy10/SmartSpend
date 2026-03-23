@@ -13,13 +13,23 @@ from app.models.user import User
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserCreate
 
+from fastapi.concurrency import run_in_threadpool
 import bcrypt
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return await run_in_threadpool(
+        bcrypt.checkpw,
+        plain_password.encode('utf-8'),
+        hashed_password.encode('utf-8')
+    )
 
-def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+async def get_password_hash(password: str) -> str:
+    hash_bytes = await run_in_threadpool(
+        bcrypt.hashpw,
+        password.encode('utf-8'),
+        bcrypt.gensalt()
+    )
+    return hash_bytes.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -48,7 +58,7 @@ async def create_user(db: AsyncSession, user_create: UserCreate) -> User:
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    hashed_pwd = get_password_hash(user_create.password)
+    hashed_pwd = await get_password_hash(user_create.password)
     new_user = User(
         email=user_create.email,
         full_name=user_create.full_name,
@@ -65,7 +75,9 @@ async def authenticate_user(db: AsyncSession, login_data: LoginRequest) -> User:
     user = await get_user_by_email(db, login_data.email)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not user.hashed_password or not verify_password(login_data.password, user.hashed_password):
+    
+    is_valid = await verify_password(login_data.password, user.hashed_password)
+    if not user.hashed_password or not is_valid:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return user
 

@@ -71,11 +71,20 @@ async def get_monthly_summary(db: AsyncSession, user_id: uuid.UUID, year: int, m
             percentage=round(pct, 2)
         ))
         
+    tx_count_stmt = select(func.count(Expense.id)).where(
+        Expense.user_id == user_id,
+        Expense.expense_date >= start_date,
+        Expense.expense_date <= end_date
+    )
+    tx_count_res = await db.execute(tx_count_stmt)
+    transaction_count = tx_count_res.scalar() or 0
+        
     return MonthlySummary(
         total_spent=round(total_spent, 2),
         total_budget=round(total_budget, 2),
         budget_used_pct=round(budget_pct, 2),
         vs_last_month=round(vs_last_month, 2),
+        transaction_count=transaction_count,
         by_category=by_category
     )
 

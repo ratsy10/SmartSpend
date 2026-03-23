@@ -4,6 +4,7 @@ import { useAuthStore } from './store/useAuthStore';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import OAuthCallback from './pages/OAuthCallback';
+import VerifyOTP from './pages/VerifyOTP';
 import Onboarding from './pages/Onboarding';
 import MainLayout from './components/layout/MainLayout';
 import AddExpense from './pages/AddExpense';
@@ -29,6 +30,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/oauth-callback" element={<OAuthCallback />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
           
           <Route 
             path="/onboarding" 

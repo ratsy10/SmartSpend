@@ -21,3 +21,9 @@ class UserResponse(UserBase):
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    currency: Optional[str] = None
+    reminder_enabled: Optional[bool] = None
+    reminder_time: Optional[str] = None

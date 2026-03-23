@@ -140,8 +140,15 @@ async def check_budget_after_expense(db: AsyncSession, user: User, expense: Expe
     
     pct = (spent / budget.monthly_limit) * 100 if budget.monthly_limit > 0 else Decimal("0")
     
-    # Call notification service if thresholds crossed (to be implemented)
     from app.services import notification_service
+
+    # Check for splurge! (single expense is >= 20% of the entire budget limit)
+    expense_pct = (expense.amount / budget.monthly_limit) * 100 if budget.monthly_limit > 0 else Decimal("0")
+    if expense_pct >= 20:
+        await notification_service.send_splurge_alert(db, user, expense.merchant, expense.amount, expense_pct)
+        
+    # Call notification service if thresholds crossed
+
     if pct >= 100 and budget.alert_at_100:
         await notification_service.send_budget_alert(db, user, str(expense.category_id), spent, budget.monthly_limit, pct)
     elif pct >= 80 and budget.alert_at_80:

@@ -18,18 +18,22 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/register', { 
+      const res = await api.post('/auth/register', { 
         email, 
         password, 
         full_name: fullName 
       });
       
-      const { data } = await api.post('/auth/login', { email, password });
+      if (res.data.require_verification) {
+        navigate('/verify-otp', { state: { email, next: '/onboarding' } });
+        return;
+      }
       
+      // Fallback if verification disabled in future
+      const { data } = await api.post('/auth/login', { email, password });
       const userRes = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${data.access_token}` }
       });
-      
       setAuth(data.access_token, userRes.data);
       navigate('/onboarding');
     } catch (err: any) {

@@ -16,11 +16,32 @@
     --success-foreground: #ffffff;
     --border: #E2E8F0; 
     --ring: #00E676;
+    
+    /* Inverted Dashboard AI Card */
+    --insight-bg: #0F172A;
+    --insight-text: #F8FAFC;
+    --insight-text-muted: #ffffff;
+    --insight-icon: #334155;
   }
 
   body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  .dark {
+    --bg-dark: #020617; 
+    --surface: #0F172A; 
+    --text-main: #F8FAFC; 
+    --text-muted: #94A3B8; 
+    --border: #1E293B; 
+    --danger: #F87171;
+    
+    /* Inverted Dashboard AI Card */
+    --insight-bg: #FFFFFF;
+    --insight-text: #0F172A;
+    --insight-text-muted: #1e293b;
+    --insight-icon: #E2E8F0;
   }
 }

@@ -26,7 +26,12 @@ export default function Login() {
       setAuth(data.access_token, userRes.data);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid login credentials');
+      const errorDetail = err.response?.data?.detail;
+      if (errorDetail && errorDetail.includes('verified')) {
+        navigate('/verify-otp', { state: { email, next: '/' } });
+      } else {
+        setError(errorDetail || 'Invalid login credentials');
+      }
     } finally {
       setLoading(false);
     }

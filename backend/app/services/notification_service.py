@@ -68,6 +68,18 @@ async def send_budget_alert(db: AsyncSession, user: User, category_id: str, spen
     
     await send_web_push(user, title, body, "/budgets")
 
+async def send_splurge_alert(db: AsyncSession, user: User, merchant: str, spent: Decimal, percentage: Decimal):
+    title = "⚠️ Major Splurge Detected"
+    body = f"Your recent purchase at {merchant or 'a merchant'} consumed {percentage:.0f}% of your entire monthly budget in one go!"
+    
+    await create_notification(db, user.id, 'splurge_alert', title, body, {
+        "merchant": merchant,
+        "spent": float(spent),
+        "percentage": float(percentage)
+    })
+    
+    await send_web_push(user, title, body, "/history")
+
 async def send_daily_reminder(db: AsyncSession, user: User):
     title = "Time to log!"
     body = "Don't forget to log today's expenses!"

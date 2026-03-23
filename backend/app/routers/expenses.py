@@ -21,7 +21,7 @@ async def get_expenses(
     min_amount: Optional[Decimal] = Query(None),
     max_amount: Optional[Decimal] = Query(None),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):

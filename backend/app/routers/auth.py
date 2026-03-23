@@ -24,18 +24,67 @@ def set_refresh_cookie(response: Response, refresh_token: str):
         max_age=settings.refresh_token_expire_days * 24 * 60 * 60
     )
 
-@router.post("/register", response_model=Token)
-async def register(user_data: UserCreate, response: Response, db: AsyncSession = Depends(get_db)):
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, BackgroundTasks
+
+@router.post("/register")
+async def register(user_data: UserCreate, response: Response, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     user = await auth_service.create_user(db, user_data)
+    
+    import random
+    import string
+    from datetime import datetime, timedelta, timezone
+    from app.services.email_service import send_otp_email
+    
+    otp = ''.join(random.choices(string.digits, k=6))
+    user.otp_code = otp
+    user.otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
+    
+    await db.commit()
+    background_tasks.add_task(send_otp_email, user.email, otp)
+    
+    return {"message": "Account created. Please check your email for the verification code.", "require_verification": True}
+
+@router.post("/login", response_model=Token)
+async def login(login_data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+    user = await auth_service.authenticate_user(db, login_data)
+    
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email not verified. Please verify your account.")
+        
     access_token = auth_service.create_access_token({"sub": str(user.id)})
     refresh_token = auth_service.create_refresh_token({"sub": str(user.id)})
     
     set_refresh_cookie(response, refresh_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/login", response_model=Token)
-async def login(login_data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
-    user = await auth_service.authenticate_user(db, login_data)
+from pydantic import BaseModel
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp_code: str
+
+@router.post("/verify-otp", response_model=Token)
+async def verify_otp(request_data: VerifyOTPRequest, response: Response, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+    from datetime import datetime, timezone
+    
+    stmt = select(User).where(User.email == request_data.email)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="Account already verified")
+    if user.otp_code != request_data.otp_code:
+        raise HTTPException(status_code=400, detail="Invalid OTP code")
+    if user.otp_expiry and user.otp_expiry < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP code expired")
+        
+    user.is_verified = True
+    user.otp_code = None
+    user.otp_expiry = None
+    await db.commit()
+    
     access_token = auth_service.create_access_token({"sub": str(user.id)})
     refresh_token = auth_service.create_refresh_token({"sub": str(user.id)})
     
@@ -144,21 +193,24 @@ async def google_callback(code: str, response: Response, db: AsyncSession = Depe
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+from app.schemas.user import UserUpdate
+
 @router.put("/me", response_model=UserResponse)
 async def update_me(
-    data: dict,
+    data: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    allowed = ["full_name", "currency", "reminder_enabled", "reminder_time"]
     from datetime import time
-    for k, v in data.items():
-        if k in allowed:
-            if k == 'reminder_time' and v:
-                h, m, s = map(int, v.split(':'))
-                setattr(current_user, k, time(h, m, s))
-            else:
-                setattr(current_user, k, v)
+    update_data = data.model_dump(exclude_unset=True)
+    
+    for k, v in update_data.items():
+        if k == 'reminder_time' and v:
+            h, m, s = map(int, v.split(':'))
+            setattr(current_user, k, time(h, m, s))
+        else:
+            setattr(current_user, k, v)
+            
     await db.commit()
     await db.refresh(current_user)
     return current_user

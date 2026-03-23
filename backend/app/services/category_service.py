@@ -14,6 +14,7 @@ SYSTEM_CATEGORIES = [
     {"name": "Electricity", "icon": "lightbulb", "color": "#eab308"},
     {"name": "Utilities", "icon": "zap", "color": "#6b7280"},
     {"name": "Miscellaneous", "icon": "box", "color": "#84cc16"},
+    {"name": "Subscriptions", "icon": "repeat", "color": "#a855f7"},
 ]
 
 async def seed_categories(db: AsyncSession):
@@ -39,3 +40,15 @@ async def seed_categories(db: AsyncSession):
     if new_categories:
         db.add_all(new_categories)
         await db.commit()
+
+async def get_categories(db: AsyncSession, user_id=None):
+    from sqlalchemy import or_
+    if user_id:
+        stmt = select(Category).where(
+            or_(Category.user_id.is_(None), Category.user_id == user_id)
+        ).where(Category.is_active == True)
+    else:
+        stmt = select(Category).where(Category.is_active == True)
+        
+    result = await db.execute(stmt)
+    return result.scalars().all()

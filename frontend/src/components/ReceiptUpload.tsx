@@ -49,7 +49,7 @@ export default function ReceiptUpload({ onSuccess, onCancel }: ReceiptUploadProp
     try {
       await api.post('/expenses', {
         ...finalData,
-        category_id: "00000000-0000-0000-0000-000000000000", // placeholder
+        category_id: finalData.category_id,
         input_method: "receipt"
       });
       setPhase('success');

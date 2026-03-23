@@ -198,3 +198,55 @@ Respond in plain text only."""
         return "You had some activity this week. Keep tracking your expenses to see detailed insights."
         
     return result["text"].strip()
+
+async def generate_financial_insights(user_id: str, currency: str, transactions_data: list, budgets_data: list) -> list:
+    system_prompt = f"""You are an elite, highly analytical personal finance AI. 
+Analyze the provided user's transactions and budgets for the current month.
+Return a JSON array of exactly 5 insight objects. Each object must have:
+- "type": either "trend", "optimization", "praise", or "warning"
+- "title": a short 3-5 word concise title
+- "message": a 2-3 sentence actionable insight with specific numbers.
+Ensure all monetary values use the {currency} currency symbol appropriately.
+
+CRITICAL INSTRUCTIONS:
+1. DIFFERENTIATE FIXED VS. FLEXIBLE COSTS: You MUST understand the difference between recurring monthly bills (like 'Rent', 'Utilities', 'Subscription', 'Electricity') and discretionary purchases. Do NOT refer to paying 'Rent' or a utility bill as a "splurge", "significant purchase", "shopping spree", or discretionary expense. They are fixed costs. Ignore fixed costs when advising on areas to cut back.
+2. If there are noticeable high burns or single massive discretionary transactions, output ONE OR TWO of the following exact insight patterns mathematically:
+   - "High Spending Velocity": E.g., "You're burning through {currency}X/day. At this pace, you'll exceed your monthly budget by {currency}Y."
+   - "Major Splurge Detected": E.g., "Your recent purchase at [Merchant] consumed Y% of your entire monthly budget in one go!"
+   - "Excellent Trajectory": E.g., "You're on track to save an impressive {currency}X this month!"
+   - "Spending Down": E.g., "Great job! Your spending is tracking lower than last month."
+3. You MUST analyze EXACT "merchant" names and specific patterns from the transaction data. Provide exact mathematical breakdowns that mention real merchant names from their data.
+
+Do not use markdown. Return ONLY the valid JSON array. For example ({currency} example):
+[
+  {{"type": "warning", "title": "High Spending Velocity", "message": "You're burning through {currency}200/day. At this pace, you'll exceed your monthly budget by {currency}14,000."}},
+  {{"type": "warning", "title": "Major Splurge Detected", "message": "Your recent purchase at 'Apple' consumed 27% of your entire monthly budget in one go!"}},
+  {{"type": "praise", "title": "Great Grocery Pacing", "message": "You have kept Food spending to just 10% of your limit, primarily shopping efficiently at 'Whole Foods'."}},
+  {{"type": "optimization", "title": "Coffee Habit Drain", "message": "You visited 'Starbucks' 4 times. Making coffee at home could save you roughly {currency}45 next week."}},
+  {{"type": "praise", "title": "Excellent Trajectory", "message": "You're on track to save an impressive {currency}400 this month! Your daily burn rate is remarkably efficient."}}
+]
+"""
+    
+    data_context = {
+        "transactions": transactions_data,
+        "budgets": budgets_data
+    }
+    user_prompt = f"Data: {json.dumps(data_context, default=str)}"
+    
+    result = await call_gemini(system_prompt, user_prompt)
+    if not result["success"]:
+        return []
+    
+    try:
+        import re
+        data = result["text"].strip()
+        
+        # Regex pull the array out safely
+        match = re.search(r'\[.*\]', data, re.DOTALL)
+        if match:
+            data = match.group(0)
+            
+        return json.loads(data)
+    except Exception as e:
+        print(f"[AI SERVICE] Failed to parse financial insights array: {e}\nRaw: {result['text']}")
+        return []
